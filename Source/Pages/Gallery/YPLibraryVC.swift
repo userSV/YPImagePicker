@@ -485,28 +485,30 @@ public class YPLibraryVC: UIViewController, YPPermissionCheckable {
                 }
                 
                 // Fill result media items array
-                var resultMediaItems: [YPMediaItem] = []
+                var resultMediaItems: [YPMediaItem?] = []
                 let asyncGroup = DispatchGroup()
                 
-                for asset in selectedAssets {
+                for asset in selectedAssets.enumerated() {
                     asyncGroup.enter()
                     
-                    switch asset.asset.mediaType {
+                    switch asset.element.asset.mediaType {
                     case .image:
-                        self.fetchImageAndCrop(for: asset.asset, withCropRect: asset.cropRect) { image, exifMeta in
+                        self.fetchImageAndCrop(for: asset.element.asset, withCropRect: asset.element.cropRect) { image, exifMeta in
                             let photo = YPMediaPhoto(image: image.resizedImageIfNeeded(),
-													 exifMeta: exifMeta, asset: asset.asset)
+                                                     exifMeta: exifMeta, asset: asset.element.asset)
                             resultMediaItems.append(YPMediaItem.photo(p: photo))
                             asyncGroup.leave()
                         }
                         
                     case .video:
-                        self.fetchVideoAndApplySettings(for: asset.asset,
-                                                             withCropRect: asset.cropRect) { videoURL in
+                        resultMediaItems.append(nil)
+                        self.fetchVideoAndApplySettings(for: asset.element.asset,
+                                                        withCropRect: asset.element.cropRect) { videoURL in
                             if let videoURL = videoURL {
                                 let videoItem = YPMediaVideo(thumbnail: thumbnailFromVideoPath(videoURL),
-                                                             videoURL: videoURL, asset: asset.asset)
-                                resultMediaItems.append(YPMediaItem.video(v: videoItem))
+                                                             videoURL: videoURL, asset: asset.element.asset)
+                                resultMediaItems[asset.offset] = YPMediaItem.video(v: videoItem)
+//                                resultMediaItems.append(YPMediaItem.video(v: videoItem))
                             } else {
                                 print("YPLibraryVC -> selectedMedia -> Problems with fetching videoURL.")
                             }
@@ -518,7 +520,7 @@ public class YPLibraryVC: UIViewController, YPPermissionCheckable {
                 }
                 
                 asyncGroup.notify(queue: .main) {
-                    multipleItemsCallback(resultMediaItems)
+                    multipleItemsCallback(resultMediaItems as! [YPMediaItem])
                     self.delegate?.libraryViewFinishedLoading()
                 }
             } else {
